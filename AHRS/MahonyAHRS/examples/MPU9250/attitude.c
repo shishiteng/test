@@ -22,6 +22,7 @@ using namespace cv;
 double sa = 0.000244*9.8;
 //double sg = 0.061035*3.141592653/180.0;
 double sg = 0.061035;
+double sm = 6.000000;
 
 unsigned long long gstime = 0;
 
@@ -50,7 +51,7 @@ void phase_packet_data(Packet_t *p,imu_data_t *data)
   memset(data,0,sizeof(imu_data_t));
   memcpy(data->accl,&p->buf[3],6);
   memcpy(data->gyro,&p->buf[10],6);
-  //memcpy(data->mag,&buf[23],6);
+  memcpy(data->mag,&p->buf[17],6);
   return;
 }
 
@@ -87,9 +88,13 @@ int main(int argc, char ** argv)
 	      imu.accl[0]*sa, imu.accl[1]*sa, imu.accl[2]*sa);
       printf(str,"%s",str); 
 #endif
-      //filter.updateIMU(gx, gy, gz, ax, ay, az);
+#if 0
       filter.updateIMU(imu.gyro[0]*sg, imu.gyro[1]*sg, imu.gyro[2]*sg,
 		       imu.accl[0]*sa, imu.accl[1]*sa, imu.accl[2]*sa);
+#endif
+      filter.update(imu.gyro[0]*sg, imu.gyro[1]*sg, imu.gyro[2]*sg,
+		    imu.accl[0]*sa, imu.accl[1]*sa, imu.accl[2]*sa,
+		    imu.mag[0] *sm, imu.mag[0] *sm, imu.mag[2] *sm);
       // print the heading, pitch and roll
       printf("R/P/Y:%lf,%lf,%lf\n",filter.getRoll(),filter.getPitch(),filter.getYaw()); 
     }
