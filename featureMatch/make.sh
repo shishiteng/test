@@ -1,0 +1,2 @@
+g++ src/orbMatch3_cpu.cpp -o bin/orbMatch3_cpu -lopencv_core -lopencv_imgcodecs  -lopencv_imgproc -lopencv_highgui -lopencv_features2d -lopencv_calib3d -L /usr/local/opencv-3.1/lib/ -I /usr/local/opencv-3.1/include/ -O3
+g++ src/orbMatch3_gpu.cpp -o bin/orbMatch3_gpu -lopencv_core -lopencv_imgcodecs  -lopencv_imgproc -lopencv_highgui -lopencv_features2d -lopencv_cudafeatures2d -lopencv_calib3d -L /usr/local/opencv-3.1-cuda/lib/ -I /usr/local/opencv-3.1-cuda/include/ -O3
