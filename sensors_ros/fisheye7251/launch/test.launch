@@ -1,0 +1,6 @@
+<launch>
+    <node name="fisheye7251" pkg="fisheye7251" type="fisheye7251" output="log">
+        <!--param name="config_file" type="string" value="$(arg config_path)" /-->
+        <!--param name="vins_folder" type="string" value="$(arg vins_path)" /-->
+    </node>
+</launch>

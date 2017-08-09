@@ -1,0 +1,1 @@
+g++ *.cpp -I ./ -I/home/supernode/workspace/SupernodeStereo/cyusb_linux_1.0.4/include -o test -I /usr/local/include  -L /usr/local/lib -lopencv_core -lopencv_highgui -lopencv_imgproc -lpthread -lcyusb
