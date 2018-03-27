@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-//#include <arm_neon.h>
+#include <arm_neon.h>
 
 #include "opencv2/opencv.hpp"//
 
@@ -170,7 +170,6 @@ int gassianblur_5x5(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kern
 
 int gassianblur_neon(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kernel_size)
 {
-#if 0
   uint8x8_t kfac = vdup_n_u8(2);
   int i,j,k=0;
   
@@ -218,8 +217,7 @@ int gassianblur_neon(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 ker
   }
 
   free(horizontal);
-#endif
-  
+
   return 0;
 }
 
