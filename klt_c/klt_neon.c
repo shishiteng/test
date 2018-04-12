@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __ARM_NEON__
 #include <arm_neon.h>
+#endif
 
 #include "opencv2/opencv.hpp"//
 
@@ -16,9 +18,10 @@
 #define uint16 unsigned short
 #define uint32 unsigned int
 
+#define MAX_WIN_SIZE      21
 #define MAX_LEVELS        4
 #define MAX_FEATURES      256
-#define MAX_ITERATE_COUNT 10
+#define MAX_ITERATE_COUNT 30
 #define MAX_BUFFER_SIZE   409600       //
 
 #define ROUND(x) ((int)(x+0.5))
@@ -105,6 +108,7 @@ int gassianblur_ext(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kern
   uint8* row2 = src + width*2;
   
   uint16* horizontal = (uint16*)malloc(sizeof(uint16)*width);
+  uint16 aa;
 
   for(i=1;i<height-1;i++) {
     for(j=0;j<width;j++) {
@@ -114,9 +118,10 @@ int gassianblur_ext(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kern
     //printf("\n");
 
     for(int k=1;k<width-1;k++) {
-      uint16 sum = horizontal[k-1] + 2*horizontal[k] + horizontal[k+1];
-      dst[i * width + k] = (uint8)(sum>>4);
+      uint16 sum = horizontal[k-1] + horizontal[k]*2 + horizontal[k+1];
+      dst[i * width + k] = (uint8)(sum>>4); //cost too much time
     }
+
     row0 = row1;
     row1 = row2;
     row2 += width;
@@ -170,6 +175,7 @@ int gassianblur_5x5(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kern
 
 int gassianblur_neon(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kernel_size)
 {
+#ifdef __ARM_NEON__
   uint8x8_t kfac = vdup_n_u8(2);
   int i,j,k=0;
   
@@ -185,31 +191,27 @@ int gassianblur_neon(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 ker
       uint8x8_t vec_row0 = vld1_u8(row0 + j);
       uint8x8_t vec_row1 = vld1_u8(row1 + j);;
       uint8x8_t vec_row2 = vld1_u8(row2 + j);
-      
+     
       uint16x8_t temp = vmull_u8(vec_row1,kfac);
       temp = vaddw_u8(temp,vec_row0);
       temp = vaddw_u8(temp,vec_row2);
       
-      uint8x8_t result = vshrn_n_u16 (temp, 2);
+      uint8x8_t result = vshrn_n_u16(temp, 2);
       vst1_u8(horizontal+j, result);
     }
     
-    for(int k=1;k<width-1;k++) {
-      uint16 sum = horizontal[k-1] + 2*horizontal[k] + horizontal[k+1];
-      dst[i * width + k] = (uint8)(sum>>2);
-    }
-
-#if 0
     for(int k=1;k<width-1;k+=8) {
-      uint8x8x3_t vec_row = vld3_u8(horizontal);
-      uint16x8_t temp = vmull_u8(vec_row.val[1],kfac);
-      temp = vaddw_u8(temp,vec_row.val[0]);
-      temp = vaddw_u8(temp,vec_row.val[1]);
+      uint8x8_t vec_k0 = vld1_u8(horizontal+k-1);
+      uint8x8_t vec_k1 = vld1_u8(horizontal+k);;
+      uint8x8_t vec_k2 = vld1_u8(horizontal+k+1);
+      
+      uint16x8_t temp = vmull_u8(vec_k1,kfac);
+      temp = vaddw_u8(temp,vec_k0);
+      temp = vaddw_u8(temp,vec_k2);
 
-      uint8x8_t result = vshrn_n_u16 (temp, 4);
+      uint8x8_t result = vshrn_n_u16(temp, 2);
       vst1_u8(dst+i*width+k, result);
     }
-#endif
 
     row0 = row1;
     row1 = row2;
@@ -217,6 +219,7 @@ int gassianblur_neon(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 ker
   }
 
   free(horizontal);
+#endif
 
   return 0;
 }
@@ -324,6 +327,67 @@ int pyrdown_ext(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kernel_s
   }
 
   free(horizontal);
+}
+
+int pyrdown_neon(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kernel_size,uint16 num_levels)
+{
+#ifdef __ARM_NEON__
+  //vld
+
+
+  // wei wan cheng 
+
+
+  uint16 kernel[3] = {1, 2, 1};
+  int i,j,k=0;
+  uint16* horizontal = (uint16*)malloc(sizeof(uint16)*width);
+
+  for(uint16 l=0;l<num_levels;l++) {
+    uint16 w = width>>l;
+    uint16 h = height>>l;
+    uint32 m = 0;
+
+    uint8* row0 = src;
+    uint8* row1 = src + w;
+    uint8* row2 = src + w*2;
+
+    for(i=1;i<h;i+=2) {
+      for(j=0;j<w;j++) {
+	horizontal[j] = row0[j] + row1[j]*2 + row2[j];
+	uint8x8_t data = vdup_n_u8(0);;
+	//data = vld1_lane_u8(row0,data,0);
+	data = vld1_u8(row0);
+	uint8 dd[8];
+	vst1_u8(dd,data);
+	for(int a=0;a<8;a++) {
+	  printf("%d %d\n",row0[a],dd[a]);
+	}
+	printf("============\n\n");
+      }
+      return -1;
+      //printf("\n");
+
+      for(int k=1;k<w-1;k+=2) {
+	uint16 sum = horizontal[k-1] + 2*horizontal[k] + horizontal[k+1];
+	//printf("level%d [%d,%d] m:%d\n",l,k,i,m);
+	dst[m++] = (uint8)(sum>>4);
+      }
+      dst[m++] = (uint8)(horizontal[w-1]>>2);
+
+      row0 += 2*w;
+      row1 += 2*w;
+      row2 += 2*w;
+    }
+    //printf("level%d m size:%d\n",l,m);
+
+    src = dst;
+    dst += m;
+  }
+
+  free(horizontal);
+#endif
+
+  return 0;
 }
 
 int pyrdown_5x5(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kernel_size,uint16 num_levels)
@@ -467,14 +531,6 @@ int sobel_ext(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kernel_siz
   int16* pdst = (int16*)dst;
   memset(pdst,0,sizeof(int16)*width*height);
 
-  for(j=1;j<width-1;j++) {
-    int16 sum_x = 2*(row0[j+1]-row0[j-1])+row1[j+1]-row1[j-1];
-    int16 sum_y = 2*(row1[j]-row0[j])+(row1[j-1]-row0[j-1])+(row1[j+1]-row0[j+1]);
-    int8 * p = (int8*)&pdst[j];
-    p[0] = sum_x/6;
-    p[1] = sum_y>>3;
-  }
-
   for(i=1;i<height-1;i++) {
     for(j=0;j<width;j++) {
       horizontal_x[j] = row0[j] + row1[j]*2 + row2[j];
@@ -503,6 +559,90 @@ int sobel_ext(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kernel_siz
 
   free(horizontal_x);
   free(horizontal_y);
+
+  return 0;
+}
+
+//only suport 640x480
+int sobel_neon(uint8 *src,uint8* dst,uint16 width,uint16 height,uint16 kernel_size)
+{
+#ifdef __ARM_NEON__
+  int16 kernel[3] = {-1, 0, 1};
+  uint8* row0 = src;
+  uint8* row1 = src + width;
+  uint8* row2 = src + width*2;
+  int16* horizontal_x = (int16*)malloc(sizeof(int16)*width);
+  int16* horizontal_y = (int16*)malloc(sizeof(int16)*width);
+
+  int i,j,k=0;
+  int16* pdst = (int16*)dst;
+  memset(pdst,0,sizeof(int16)*width*height);
+
+  for(i=1;i<height-1;i++) {
+    for(j=0;j<width;j+=8) {
+      //X
+      //horizontal_x[j] = row0[j] + row1[j]*2 + row2[j];
+      uint8x8_t vec_row0 = vld1_u8(row0 + j);
+      uint8x8_t vec_row1 = vld1_u8(row1 + j);;
+      uint8x8_t vec_row2 = vld1_u8(row2 + j);
+      uint8x8_t kfac = vdup_n_u8(2);
+      uint16x8_t temp = vmull_u8(vec_row1, kfac);
+      temp = vaddw_u8(temp, vec_row0);
+      temp = vaddw_u8(temp, vec_row2);
+      vst1q_u16((uint16*)(horizontal_x + j), temp);
+
+      //Y
+      //horizontal_y[j] = row2[j] - row0[j];
+      //uint8x8_t result = vshrn_n_u16(temp, 2);
+      int16x8_t vec0  = vreinterpretq_s16_u16( vmovl_u8(vec_row0) );
+      int16x8_t vec2  = vreinterpretq_s16_u16( vmovl_u8(vec_row2) );
+      int16x8_t temp_ = vsubq_s16(vec2, vec0);
+      vst1q_s16(horizontal_y + j, temp_);
+    }
+    
+    //fprintf(stderr,"[%d,%d]\n",i,j);
+
+    //int16 sum_x,sum_y;
+    for(int k=1;k<width-1;k+=8) {
+      //sum_x = horizontal_x[k+1] - horizontal_x[k-1];
+      //sum_y = horizontal_y[k-1] + 2*horizontal_y[k] + horizontal_y[k+1];
+      //fprintf(stderr,"  [%d,%d]\n",i,k);
+
+      //X
+      int16x8_t vec_x0 = vld1q_s16(horizontal_x + k - 1);
+      //int16x8_t vec_x1 = vld1q_s16(horizontal_x + k);
+      int16x8_t vec_x2 = vld1q_s16(horizontal_x + k + 1);
+      int16x8_t sum_x = vsubq_s16(vec_x2, vec_x0);
+      int8x8_t result_x = vshrn_n_s16(sum_x, 3);
+
+      //Y
+      int16x8_t vec_y0 = vld1q_s16(horizontal_y + k - 1);
+      int16x8_t vec_y1 = vld1q_s16(horizontal_y + k);
+      int16x8_t vec_y2 = vld1q_s16(horizontal_y + k + 1);
+      int16x8_t sum_y = vaddq_s16(vec_y1,vec_y1);
+      sum_y = vaddq_s16(sum_y,vec_y0);
+      sum_y = vaddq_s16(sum_y,vec_y2);
+      int8x8_t result_y = vshrn_n_s16(sum_y, 3);
+
+      //int8x8x2_t result = vzip_s8(result_x,result_y);
+      int8x8_t fac = vdup_n_s8(0);
+      //int8x8x2_t result = vzip_s8(result_x,result_y);
+      //int8x8x2_t result = vuzp_s8(result_x,result_y);
+      int8x8x2_t result;
+      result.val[0] = result_x;
+      result.val[1] = result_y;
+
+      int8_t * p = (int8_t*)(pdst + i * width + k);
+      vst2_s8(p,result);
+    }
+    row0 = row1;
+    row1 = row2;
+    row2 += width;
+  }
+
+  free(horizontal_x);
+  free(horizontal_y);
+#endif
 
   return 0;
 }
@@ -629,6 +769,7 @@ int klt_buildpyramids(pyramid_t *pyr,uint8 *data)
   //fprintf(stderr,"pyrdown:0x%x\n",p_pyr_buf);
   //pyrdown(data,p_pyr_buf,width,height,kernel_size,num_levels);
   pyrdown_ext(data,p_pyr_buf,width,height,kernel_size,num_levels);
+  //pyrdown_neon(data,p_pyr_buf,width,height,kernel_size,num_levels);
 
 #if 0
   for(int i=0;i<pyr->num_levels;i++) {
@@ -654,6 +795,7 @@ int klt_sobel(pyramid_t *pyr)
     uint16 h = pyr->pyramid[i].height;
     //sobel(pyr->pyramid[i].data,pyr->derive[i].data,w,h,3);
     sobel_ext(pyr->pyramid[i].data,pyr->derive[i].data,w,h,3);
+    //sobel_neon(pyr->pyramid[i].data,pyr->derive[i].data,w,h,3);
     //sobel_5x5(pyr->pyramid[i].data,pyr->derive[i].data,w,h,3);
   }
 
@@ -758,8 +900,10 @@ int klt_run(pyramid_t *prev_pyr,pyramid_t *next_pyr,features_t *prev_pts,feature
   float FLT_SCALE=0.001f;
   int32 W_BITS=14; 
   int32 cn2 = 2;
-  uint16 win_size = 21;
+  uint16 win_size = MAX_WIN_SIZE;
   uint16 half_win = win_size>>1;
+
+  int32 icnt = 0;
 
   for(int32 m=0;m<prev_pts->count;m++) {
 
@@ -773,7 +917,7 @@ int klt_run(pyramid_t *prev_pyr,pyramid_t *next_pyr,features_t *prev_pts,feature
       const float xa = (float)prev_pts->pt[m].x/(1<<l);
       const float ya = (float)prev_pts->pt[m].y/(1<<l);
 
-      win_size = 21;
+      win_size = MAX_WIN_SIZE;
       half_win = win_size>>1;
       
       // 1.同层追踪
@@ -812,8 +956,8 @@ int klt_run(pyramid_t *prev_pyr,pyramid_t *next_pyr,features_t *prev_pts,feature
       int iA11=0,iA12=0,iA22=0; //整型的梯度
       float A11,A12,A22;        //浮点型梯度
 
-      int Iptr[21*21]={0};      //用于保存窗口中的灰度
-      int dIptr[21*21*2]={0};   //用于保存窗口中的梯度
+      int Iptr[MAX_WIN_SIZE*MAX_WIN_SIZE]={0};      //用于保存窗口中的灰度
+      int dIptr[MAX_WIN_SIZE*MAX_WIN_SIZE*2]={0};   //用于保存窗口中的梯度
 
       //fprintf(stderr," -----1\n",a,b);
 
@@ -883,7 +1027,7 @@ int klt_run(pyramid_t *prev_pyr,pyramid_t *next_pyr,features_t *prev_pts,feature
       A22 = iA22*FLT_SCALE;
       float D = A11*A22 - A12*A12;
       D = 1./D;
-      
+
 #ifdef DEBUG
       fprintf(stderr,"  G:%d, %d, %d\n",iA11,iA22,iA12);
       fprintf(stderr,"  G_scale:%.3f, %.3f, %.3f\n",A11,A22,A12);
@@ -899,6 +1043,7 @@ int klt_run(pyramid_t *prev_pyr,pyramid_t *next_pyr,features_t *prev_pts,feature
 #ifdef DEBUG
 	fprintf(stderr,"  __iter%d\n",iter);
 #endif
+	icnt++;
 
 #ifdef DEBUG
 	//判断是否越界
@@ -1019,6 +1164,8 @@ int klt_run(pyramid_t *prev_pyr,pyramid_t *next_pyr,features_t *prev_pts,feature
       
   }//loop:features
 
+  fprintf(stderr,"iteration count: %d\n",icnt);
+
   return 0;
 }
 
@@ -1036,19 +1183,25 @@ int calc_klt(uint8* prev_img,
   
   // 1.初始化金字塔
   pyramid_t prev_pyr, next_pyr;
-  klt_init(&prev_pyr,&next_pyr,width,height,num_levels);
+  klt_init(&prev_pyr,&next_pyr,width,height,num_levels); //0.05ms on tk1
    
   // 2.建立高斯金字塔,其实每次可以之算一帧，另一帧缓存
-  klt_buildpyramids(&prev_pyr,prev_img);
-  klt_buildpyramids(&next_pyr,next_img);
+  klt_buildpyramids(&prev_pyr,prev_img); //0.6ms on tk1
+  klt_buildpyramids(&next_pyr,next_img); //0.6ms on tk1
 
   // 3.计算sobel
-  klt_sobel(&prev_pyr);
+  klt_sobel(&prev_pyr); // 1.9ms on tk1
 
   // 测试计算结果
   //klt_check(&prev_pyr, &next_pyr, prev_features, next_features);
   
-  // 4.klt
+  // 4.klt win_size=21 levels=4
+  //  1  pts: 3.25ms -> 0.1ms
+  // 10  pts: 4.60ms -> 1.45ms
+  // 50  pts: 10.7ms -> 7.5ms
+  // 100 pts: 18.5ms -> 15.3ms
+  // 200 pts: 33.6ms -> 30.4ms
+  // arverage: 0.15ms/pt
   klt_run(&prev_pyr, &next_pyr, prev_features, next_features);
 
   free(g_pyr_buffer0);
