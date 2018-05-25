@@ -1,4 +1,4 @@
-程序说明
+##程序说明
 
 phab2_msg_convert可以用pc录制tango图像和imu数据，具体过程：
 1.在pc上建立一个5G的热点(一定要5G，否则无线传输的速度达不到实时传输)，开启roscore，tango连接热点
@@ -24,7 +24,7 @@ phab2_msg_convert可以用pc录制tango图像和imu数据，具体过程：
 这时候打开rviz，就可以看到和你的算法对齐的tango路径了。
 
 
-文件说明
+##文件说明
 
 phab2_msg_convert.cpp
 转换tango中ros streamer发布的消息
