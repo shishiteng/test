@@ -1,6 +1,0 @@
-<launch>
-    <node name="visensor7251" pkg="visensor7251" type="visensor7251" output="log">
-        <!--param name="config_file" type="string" value="$(arg config_path)" /-->
-        <!--param name="vins_folder" type="string" value="$(arg vins_path)" /-->
-    </node>
-</launch>
