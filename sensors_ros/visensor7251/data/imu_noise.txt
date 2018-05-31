@@ -1,0 +1,52 @@
+ax
+Input imu frequency: 200
+freq:200
+B: 0.556229
+N: 1.000000
+K: 0.202442
+sig_gyro_noise: 9.156588
+T: 14.035000
+
+Input measurements as a column vector: ay
+freq:200
+B: 0.471335
+N: 1.000000
+K: 0.178303
+sig_gyro_noise: 9.527398
+T: 15.920000
+
+Input measurements as a column vector: az
+Input imu frequency: 200
+freq:200
+B: 1.021026
+N: 1.000000
+K: 0.569726
+sig_gyro_noise: 15.310266
+T: 197.935000
+
+Input measurements as a column vector: gx
+Input imu frequency: 200
+freq:200
+B: 0.052122
+N: 0.119975
+K: 0.020284
+sig_gyro_noise: 1.116877
+T: 135.620000
+
+Input measurements as a column vector: gy
+Input imu frequency: 200
+freq:200
+B: 0.137985
+N: 0.295854
+K: 0.050021
+sig_gyro_noise: 1.172836
+T: 5.125000
+
+Input measurements as a column vector: gz
+Input imu frequency: 200
+freq:200
+B: 0.060663
+N: 0.144053
+K: 0.024355
+sig_gyro_noise: 0.889959
+T: 5.810000

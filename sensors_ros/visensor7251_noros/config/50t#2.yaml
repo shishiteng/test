@@ -1,0 +1,78 @@
+%YAML:1.0
+
+# image　and imu settings 
+img_frame_rate: 20
+imu_frame_rate: 200
+auto_exposure: 1
+exposure_time: 3
+gain: 3
+
+# imu标定方法：先算温漂，再用imu_tk算bias、scale和轴间误差
+# 注意：这里没有处理逐次开机噪声
+# 温漂只考虑到30～55°之间的，其它暂时没有测试
+# imu settings
+temperature_compensation: 1
+bias_correction: 1
+scale_correction: 1
+axis_alignment: 1
+
+#temperature compensation
+tempdriftscale_acc: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [ -1.131, -1.276, -1.646 ]
+
+tempdriftscale_gyr: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [ 0.16307, -0.03480, 0.05628 ]
+
+# bias correction
+bias_acc: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [ -19.4791, 1.21469, -213.101 ]
+
+bias_gyr: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [ -33.0759, -4.75097,  -34.6812 ]
+
+
+# scale correction
+Ka:!!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 0.00239068,  0,          0,
+           0,           0.00239904, 0,
+           0,           0,          0.00237259 ]
+
+Kg:!!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 0.00107056,          0,          0,
+           0,          0.00106742,          0,
+           0,                   0, 0.00106858 ]
+
+# axis alignment
+Ta:!!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 1,  -0.000444448, -0.00098275,
+           0,            1,   -0.0029801,
+          -0,            0,            1 ]
+
+Tg:!!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 1,          0.000594882, -0.000926612,
+          -0.00138754,            1,  -0.00194073,
+          -0.0053918,  0.00173144,            1 ]

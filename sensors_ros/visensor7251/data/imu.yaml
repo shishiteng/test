@@ -1,0 +1,8 @@
+rostopic: /imu0
+update_rate: 500.0                        #Hz
+
+accelerometer_noise_density: 0.003        #300µg/√Hz,from mpu9250 datasheet,convert to m/s^2,0.00294
+gyroscope_noise_density: 0.0002           #0.01º/s/√Hz,from mpu9250 datasheet,convert to rad/s,0.00017452
+
+accelerometer_random_walk: 1.84e-3        #0.00184 m/s^2
+gyroscope_random_walk: 6.6e-5             #0.000066047 rad/s
