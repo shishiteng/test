@@ -1,0 +1,1 @@
+g++ dilate.cpp -o dilate  -O3 -lopencv_core -lopencv_imgproc -lopencv_highgui -I /usr/local/opencv3/

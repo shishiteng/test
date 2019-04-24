@@ -1,0 +1,37 @@
+#include "opencv2/opencv.hpp"
+
+using namespace std;
+using namespace cv;
+
+int main()
+{
+  Mat img = imread("a.png");
+  imshow("原始图", img);
+
+  Mat gray;
+  cvtColor(img, gray, COLOR_BGR2GRAY);
+  imshow("灰度图", gray);
+
+  img = 255 - gray;
+  //threshold(img, result, 170, 255, CV_THRESH_BINARY);
+  imshow("反色图", img);
+  
+  Mat out;
+  //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+  Mat element = getStructuringElement(MORPH_RECT, Size(50, 50)); 
+  dilate(img, out, element);
+  imshow("膨胀操作", out);
+
+  vector<vector<Point>>contours;
+  vector<Vec4i>hierarchy;
+  findContours(out, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
+  //绘制轮廓图
+  Mat dst = Mat::zeros(gray.size(), CV_8UC3);
+  for (int i = 0; i < hierarchy.size(); i++) {
+    Scalar color = Scalar(rand() % 255, rand() % 255, rand() % 255);
+    drawContours(dst, contours, i, color, CV_FILLED, 8, hierarchy);
+  }
+  imshow("轮廓图", dst);
+  waitKey(0);
+}
