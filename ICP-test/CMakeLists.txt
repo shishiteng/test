@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_VERBOSE_MAKEFILE 1) # to see all make process
 
 project( icp_samples )
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 find_package(PCL 1.7 REQUIRED)
 
@@ -24,4 +26,8 @@ target_link_libraries (icp4_after_feature_registration ${PCL_LIBRARIES})
 
 add_executable (transform_estimation src/transform_estimation.cpp)
 target_link_libraries (transform_estimation ${PCL_LIBRARIES})
+
+
+add_executable (gicp src/gicp.cpp)
+target_link_libraries (gicp ${PCL_LIBRARIES})
 
