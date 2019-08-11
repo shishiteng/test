@@ -31,3 +31,6 @@ target_link_libraries (transform_estimation ${PCL_LIBRARIES})
 add_executable (gicp src/gicp.cpp)
 target_link_libraries (gicp ${PCL_LIBRARIES})
 
+add_executable (ndt src/ndt_icp.cpp)
+target_link_libraries (ndt ${PCL_LIBRARIES})
+
