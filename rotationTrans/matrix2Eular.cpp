@@ -244,10 +244,10 @@ cv::Mat Euler2Matrix(cv::Mat angle)
 int main()
 {
   float r[] = {
-    0.00316709,  0.999958,    0.00860068,  0.0146869 ,
-    -0.05037308,  0.00874934, -0.99869215, -0.01471531,
-    -0.99872545,  0.0027297,   0.05039868, -0.01815286,
-    0, 0, 0, 1
+               1, -0.000604868,  8.96213e-05,  0.000380829,
+ 0.000604867,            1, -8.55095e-05,  -0.00495968,
+-8.95696e-05,  8.55638e-05,            1,   0.00250944,
+  0, 0, 0, 1
   };
 
   cv::Mat R(4,4,CV_32FC1,r);
@@ -255,9 +255,8 @@ int main()
   
   cv::Mat Rvec(3,1,CV_32FC1);
   Rodrigues(R.rowRange(0,3).colRange(0,3),Rvec);
-  cout<< "\n Rodrigues:"<<Rvec.t()*57.3f<<endl;
+  cout<< "\n Rodrigues:"<<Rvec.t()<<endl;
   
-
   cv::Mat a1 = Matrix2Euler(R);
   cout<< "\n Matrix 2 Eular:"<<a1.t()*57.3f<<endl;
   
