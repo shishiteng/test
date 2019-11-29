@@ -5,16 +5,24 @@
 #include <eigen3/Eigen/Dense>
 
 using namespace std;
+/*
+测试数据
+qi(wxyz): 0.71295 0.70117 0.0076538 -0.00054282
+ql(wxyz): 0.70656 -0.70765 0.00020102 0.0014676
 
-// template <typename Derived>
-// inline Eigen::Matrix<typename Derived::Scalar, 3, 3> SkewSymmetric(const Eigen::MatrixBase<Derived> &v3d)
-// {
-//   Eigen::Matrix<typename Derived::Scalar, 3, 3> m;
-//   m << typename Derived::Scalar(0), -v3d.z(), v3d.y(),
-//       v3d.z(), typename Derived::Scalar(0), -v3d.x(),
-//       -v3d.y(), v3d.x(), typename Derived::Scalar(0);
-//   return m;
-// }
+qi(wxyz): 0.71306 0.69818 -0.045389 -0.045031
+ql(wxyz): 0.70314 -0.70777 0.044273 -0.051896
+
+qi(wxyz): 0.69732 0.68493 -0.14769 -0.15103
+ql(wxyz): 0.68886 -0.69219 0.14951 -0.15487
+
+0.57938 0.56691 -0.40717 -0.42088 
+0.56764 -0.57534 0.41744 -0.41534 
+
+
+-0.18794 -0.18496 0.66988 0.69406 
+0.18042 -0.18698 0.68886 -0.67673 
+*/
 
 Eigen::Matrix3d ric = Eigen::Matrix3d::Identity();
 std::vector<Eigen::Matrix3d> Rc;
