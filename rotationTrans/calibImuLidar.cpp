@@ -38,6 +38,7 @@ static Eigen::Matrix<typename Derived::Scalar, 3, 3> skewSymmetric(const Eigen::
 template <typename Derived>
 inline Eigen::Matrix<typename Derived::Scalar, 4, 4> LeftQuatMatrix(const Eigen::QuaternionBase<Derived> &q)
 {
+#if 1 //针对xyzw
   Eigen::Matrix<typename Derived::Scalar, 4, 4> m;
   Eigen::Matrix<typename Derived::Scalar, 3, 1> vq = q.vec();
   typename Derived::Scalar q4 = q.w();
@@ -45,12 +46,23 @@ inline Eigen::Matrix<typename Derived::Scalar, 4, 4> LeftQuatMatrix(const Eigen:
   m.block(3, 0, 1, 3) << -vq.transpose();
   m.block(0, 3, 3, 1) << vq;
   m(3, 3) = q4;
+#else
+  // wxyz
+  Eigen::Matrix<typename Derived::Scalar, 4, 4> m;
+  Eigen::Matrix<typename Derived::Scalar, 3, 1> vq = q.vec();
+  typename Derived::Scalar q4 = q.w();
+  m.block(1, 1, 3, 3) << q4 * I3x3 + skewSymmetric(vq);
+  m.block(0, 1, 1, 3) << -vq.transpose();
+  m.block(1, 0, 3, 1) << vq;
+  m(0, 0) = q4;
+#endif
   return m;
 }
 
 template <typename Derived>
 inline Eigen::Matrix<typename Derived::Scalar, 4, 4> RightQuatMatrix(const Eigen::QuaternionBase<Derived> &p)
 {
+#if 1
   Eigen::Matrix<typename Derived::Scalar, 4, 4> m;
   Eigen::Matrix<typename Derived::Scalar, 3, 1> vp = p.vec();
   typename Derived::Scalar p4 = p.w();
@@ -58,6 +70,15 @@ inline Eigen::Matrix<typename Derived::Scalar, 4, 4> RightQuatMatrix(const Eigen
   m.block(3, 0, 1, 3) << -vp.transpose();
   m.block(0, 3, 3, 1) << vp;
   m(3, 3) = p4;
+#else
+  Eigen::Matrix<typename Derived::Scalar, 4, 4> m;
+  Eigen::Matrix<typename Derived::Scalar, 3, 1> vp = p.vec();
+  typename Derived::Scalar p4 = p.w();
+  m.block(1, 1, 3, 3) << p4 * I3x3 - skewSymmetric(vp);
+  m.block(0, 1, 1, 3) << -vp.transpose();
+  m.block(1, 0, 3, 1) << vp;
+  m(0, 0) = p4;
+#endif
   return m;
 }
 
@@ -136,12 +157,17 @@ bool CalibrationExRotation(Eigen::Quaterniond delta_q_lidar,
   Eigen::Quaterniond estimated_R(x);
   ric = estimated_R.toRotationMatrix().inverse();
   //cout << svd.singularValues().transpose() << endl;
+
+  cout << "x(v3):\n"
+       << x.transpose() << endl;
+  printf("q:\n %lf %lf %lf %lf\n", estimated_R.w(), estimated_R.x(), estimated_R.y(), estimated_R.z());
+
   cout << "ric:\n"
        << ric << endl;
 
   Eigen::Vector3d ric_cov;
   ric_cov = svd.singularValues().tail<3>();
-  cout << "ric_cov:" << ric_cov(1) << endl;
+  cout << "ric_cov:" << ric_cov.transpose() << endl;
 
   calib_ric_result = ric;
 
@@ -159,16 +185,12 @@ bool EstimateExtrinsicRotation(Eigen::Quaterniond delta_q_lidar,
                                Eigen::Quaterniond delta_q_imu,
                                Eigen::Quaterniond &transform_lb)
 {
+  Eigen::Quaterniond rot_bl = transform_lb.inverse();
+
   Rc.push_back(delta_q_lidar.toRotationMatrix());
   Rimu.push_back(delta_q_imu.toRotationMatrix());
-  Rc_g.push_back(ric.inverse() * delta_q_imu * ric);
+  Rc_g.push_back((rot_bl.conjugate() * delta_q_imu * rot_bl).toRotationMatrix());
   frame_count++;
-
-  // bool EstimateExtrinsicRotation(std::vector<Eigen::Quaterniond> all_laser_transforms,
-  //                                Eigen::Quaterniond transform_lb)
-  // {
-  Eigen::Quaterniond rot_bl = transform_lb.inverse();
-  // size_t window_size = all_laser_transforms.size();
 
   Eigen::MatrixXd A(frame_count * 4, 4);
   A.setZero();
@@ -177,7 +199,7 @@ bool EstimateExtrinsicRotation(Eigen::Quaterniond delta_q_lidar,
   {
     Eigen::Quaterniond delta_qij_imu(Rimu[i]);
     Eigen::Quaterniond delta_qij_laser(Rc[i]);
-    Eigen::Quaterniond delta_qij_laser_from_imu = rot_bl.conjugate() * delta_qij_imu * rot_bl;
+    Eigen::Quaterniond delta_qij_laser_from_imu(Rc_g[i]);
     double angular_distance = 57.3f * delta_qij_laser.angularDistance(delta_qij_laser_from_imu);
     double huber = angular_distance > 5.0 ? 5.0 / angular_distance : 1.0;
     printf("%d %f huber_%f\n", i, angular_distance, huber);
@@ -196,8 +218,24 @@ bool EstimateExtrinsicRotation(Eigen::Quaterniond delta_q_lidar,
   //  DLOG(INFO) << ">>>>>>> A <<<<<<<" << endl << A;
 
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+  // cout << "A:\n"
+  //      << A << endl;
+  // cout << "U:\n"
+  //      << svd.matrixU() << endl;
+  // cout << "V:\n"
+  //      << svd.matrixV() << endl;
+
+  // 这里算出来是wxyz
   Eigen::Matrix<double, 4, 1> x = svd.matrixV().col(3);
   Eigen::Quaterniond estimated_qlb(x);
+
+  //Eigen四元数Quaterniond(double*)赋值是xyzw
+  //Eigen::Quaterniond estimated_qlb(x[0], x[1], x[2], x[3]);
+
+  cout << "x(v3):\n"
+       << x.transpose() << endl;
+  printf("q:\n %lf %lf %lf %lf\n", estimated_qlb.w(), estimated_qlb.x(), estimated_qlb.y(), estimated_qlb.z());
 
   transform_lb = estimated_qlb;
 
@@ -225,10 +263,14 @@ bool EstimateExtrinsicRotation(Eigen::Quaterniond delta_q_lidar,
 
 int main()
 {
+  Eigen::Quaterniond qi2l(1, 0, 0, 0);
+  Eigen::Matrix3d calib_ric_result = Eigen::Matrix3d::Identity();
   int iter_count = 1;
   while (1)
   {
     cout << "------\niter_count: " << iter_count++ << endl;
+    printf("qi2l:\n %lf %lf %lf %lf\n\n", qi2l.w(), qi2l.x(), qi2l.y(), qi2l.z());
+
     double q[4];
     printf("qi(wxyz): ");
     scanf("%lf%lf%lf%lf", &q[0], &q[1], &q[2], &q[3]);
@@ -241,28 +283,54 @@ int main()
     qi = qi.normalized();
     ql = ql.normalized();
 
-    Eigen::Quaterniond qi2l(1, 0, 0, 0);
+    Eigen::Quaterniond qleft, qright;
+    qleft = qi * ql;  //qi_left*ql
+    qright = ql * qi; // qi_right*ql
+    printf("(wxyz) qi * ql: %lf %lf %lf %lf\n", qleft.w(), qleft.x(), qleft.y(), qleft.z());
+    printf("(wxyz) ql * qi: %lf %lf %lf %lf\n", qright.w(), qright.x(), qright.y(), qright.z());
+    // cout << "qleft:\n"
+    //      << qleft.toRotationMatrix() << endl;
+    // cout << "qright:\n"
+    //      << qright.toRotationMatrix() << endl;
 
-#if 0
-    Eigen::Matrix3d calib_ric_result;
+    Eigen::Matrix4d lq_mat = LeftQuatMatrix(qi);
+    Eigen::Matrix4d rq_mat = RightQuatMatrix(qi);
+    Eigen::Vector4d mm(ql.x(), ql.y(), ql.z(), ql.w()); //注意这里是xyzw!!!
+    cout << "check qi_left * ql (xyzw) :\n"
+         << (lq_mat * mm).transpose() << endl;
+    cout << "check qi_right *ql (xyzw) :\n"
+         << (rq_mat * mm).transpose() << endl;
+    // qright = rq_mat * m;
+    // printf("__qleft: %lf %lf %lf %lf\n", qleft.w(), qleft.x(), qleft.y(), qleft.z());
+    // printf("__qright: %lf %lf %lf %lf\n", qright.w(), qright.x(), qright.y(), qright.z());
+    //continue;
+
+#if 1
+    //qi2l = Eigen::Quaterniond(1, 0, 0, 0);
+    if (EstimateExtrinsicRotation(ql, qi, qi2l))
+    {
+      cout << "calib_I2L_result:\n"
+           << qi2l.toRotationMatrix() << endl;
+      // printf("\033[字背景颜色;字体颜色m 字符串 \033[0m");
+      printf("\033[1m\033[45;33m success!!! \033[0m\n");
+    }
+    else
+      cout << "failed:\n";
+#else
+    // Eigen::Matrix3d calib_ric_result = Eigen::Matrix3d::Identity();
     if (CalibrationExRotation(ql, qi, calib_ric_result))
     {
       qi2l = calib_ric_result.transpose();
       cout << "calib_I2L_result:\n"
            << qi2l.toRotationMatrix() << endl;
+      printf("\033[1m\033[45;33m success!!! \033[0m\n");
     }
     else
       cout << "failed:\n";
-    qi2l = calib_ric_result.transpose();
-#else
+    //qi2l = calib_ric_result.transpose();
+    cout << "calib_L2I_result:\n"
+         << calib_ric_result << endl;
 
-    if (EstimateExtrinsicRotation(ql, qi, qi2l))
-    {
-      cout << "calib_I2L_result:\n"
-           << qi2l.toRotationMatrix() << endl;
-    }
-    else
-      cout << "failed:\n";
 #endif
 
     cout << "calib_I2L_result:\n"
@@ -276,10 +344,10 @@ int main()
     printf("qi_ref: %lf %lf %lf %lf\n", qi_ref.w(), qi_ref.x(), qi_ref.y(), qi_ref.z());
     printf("ql_ref: %lf %lf %lf %lf\n", ql_ref.w(), ql_ref.x(), ql_ref.y(), ql_ref.z());
 
-    Eigen::Quaterniond qleft = q_I2L * qi;
-    Eigen::Quaterniond qright = ql * q_I2L;
-    printf("qleft: %lf %lf %lf %lf\n", qleft.w(), qleft.x(), qleft.y(), qleft.z());
-    printf("qright: %lf %lf %lf %lf\n", qright.w(), qright.x(), qright.y(), qright.z());
+    // Eigen::Quaterniond qleft = q_I2L * qi;
+    // Eigen::Quaterniond qright = ql * q_I2L;
+    // printf("qleft: %lf %lf %lf %lf\n", qleft.w(), qleft.x(), qleft.y(), qleft.z());
+    // printf("qright: %lf %lf %lf %lf\n", qright.w(), qright.x(), qright.y(), qright.z());
   }
 
   return 0;
