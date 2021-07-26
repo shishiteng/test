@@ -2,12 +2,30 @@
 #include <stdio.h>
 #include <math.h>
 #include <iostream>
+#include <eigen3/Eigen/Dense>
 #include "opencv2/opencv.hpp"
 
 using namespace std;
 using namespace cv;
 
 #define PI 3.141593
+
+ static Eigen::Vector3d R2ypr(const Eigen::Matrix3d &R)
+    {
+        Eigen::Vector3d n = R.col(0);
+        Eigen::Vector3d o = R.col(1);
+        Eigen::Vector3d a = R.col(2);
+
+        Eigen::Vector3d ypr(3);
+        double y = atan2(n(1), n(0));
+        double p = atan2(-n(2), n(0) * cos(y) + n(1) * sin(y));
+        double r = atan2(a(0) * sin(y) - a(1) * cos(y), -o(0) * sin(y) + o(1) * cos(y));
+        ypr(0) = y;
+        ypr(1) = p;
+        ypr(2) = r;
+
+        return ypr;
+    }
 
 //旋转矩阵得到四元数
 cv::Mat Matrix2Quaternion(cv::Mat matrix)
@@ -265,5 +283,13 @@ int main(int argc,char **argv)
   cout<< "\nMatrix:\n"<<R<<endl;
   cout<< "\nQuaternion:\n"<<quaternion.t()<<endl;
   cout<< "\nRodrigues(rad):\n"<<Rvec.t()<<endl;
-  cout<< "\nEular(degree):\n"<<Euler.t()*57.3f<<endl;
+  //cout<< "\nEular(degree):\n"<<Euler.t()*57.3f<<endl;
+
+  Eigen::Quaterniond qe(q[0], q[1], q[2], q[3]);
+  qe.normalize();
+  Eigen::Vector3d ypr = R2ypr(qe.toRotationMatrix());
+  Eigen::Vector3d ypr2 = qe.toRotationMatrix().eulerAngles(2, 1, 0);
+  std::cout << "eular(ypr) " << ypr.transpose()*57.3 << std::endl;
+  //std::cout << "eular(ypr2) " << ypr2.transpose()*57.3 << std::endl;
+
 }
